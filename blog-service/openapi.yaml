@@ -1,0 +1,203 @@
+openapi: 3.0.3
+info:
+  title: Blog Service API
+  description: Microservicio de blog con posts, categorías y autores
+  version: 1.0.0
+servers:
+  - url: http://localhost:8001
+    description: Development server
+
+paths:
+  /healthz:
+    get:
+      summary: Health check
+      description: Verifica el estado del servicio, base de datos y Redis
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service:
+                    type: string
+                    example: blog-service
+                  status:
+                    type: string
+                    example: healthy
+                  checks:
+                    type: object
+                    properties:
+                      database:
+                        type: string
+                        example: ok
+                      redis:
+                        type: string
+                        example: ok
+
+  /api/categories:
+    get:
+      summary: Listar categorías
+      description: Obtiene lista de categorías activas (cacheado 60s)
+      responses:
+        '200':
+          description: Lista de categorías
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+
+  /api/posts:
+    get:
+      summary: Listar posts
+      description: Lista posts publicados con paginación y búsqueda
+      parameters:
+        - name: search
+          in: query
+          description: Buscar en título y contenido
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Número de página
+          schema:
+            type: integer
+            default: 1
+      responses:
+        '200':
+          description: Lista paginada de posts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                  next:
+                    type: string
+                    nullable: true
+                  previous:
+                    type: string
+                    nullable: true
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PostList'
+
+  /api/posts/{id}:
+    get:
+      summary: Detalle de post
+      description: Obtiene un post por ID (cacheado 60s)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Detalle del post
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostDetail'
+        '404':
+          description: Post not found
+
+  /api/posts/{slug}:
+    get:
+      summary: Detalle de post por slug
+      description: Obtiene un post por slug (cacheado 60s)
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Detalle del post
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostDetail'
+        '404':
+          description: Post not found
+
+components:
+  schemas:
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+
+    Author:
+      type: object
+      properties:
+        id:
+          type: integer
+        display_name:
+          type: string
+        email:
+          type: string
+          format: email
+
+    PostList:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        slug:
+          type: string
+        excerpt:
+          type: string
+        author:
+          $ref: '#/components/schemas/Author'
+        category:
+          $ref: '#/components/schemas/Category'
+        published_at:
+          type: string
+          format: date-time
+        views:
+          type: integer
+
+    PostDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        slug:
+          type: string
+        body:
+          type: string
+        author:
+          $ref: '#/components/schemas/Author'
+        category:
+          $ref: '#/components/schemas/Category'
+        status:
+          type: string
+          enum: [published, draft]
+        published_at:
+          type: string
+          format: date-time
+          nullable: true
+        views:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
